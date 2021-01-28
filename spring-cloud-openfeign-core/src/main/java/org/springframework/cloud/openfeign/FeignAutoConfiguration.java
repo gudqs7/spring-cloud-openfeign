@@ -84,6 +84,7 @@ public class FeignAutoConfiguration {
 
 	@Bean
 	public FeignContext feignContext() {
+		// 创建一个管理 feign 子容器的工厂.
 		FeignContext context = new FeignContext();
 		context.setConfigurations(this.configurations);
 		return context;
@@ -109,6 +110,7 @@ public class FeignAutoConfiguration {
 		@Bean
 		@ConditionalOnMissingBean(CircuitBreakerFactory.class)
 		public Targeter defaultFeignTargeter() {
+			// 创建一个默认的 Targeter, 直接中专 fegin 的 target 方法....
 			return new DefaultTargeter();
 		}
 

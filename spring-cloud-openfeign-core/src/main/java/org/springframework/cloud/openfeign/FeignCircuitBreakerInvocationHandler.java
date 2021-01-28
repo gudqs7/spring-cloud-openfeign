@@ -48,6 +48,8 @@ class FeignCircuitBreakerInvocationHandler implements InvocationHandler {
 
 	FeignCircuitBreakerInvocationHandler(CircuitBreakerFactory factory, String feignClientName, Target<?> target,
 			Map<Method, InvocationHandlerFactory.MethodHandler> dispatch, FallbackFactory<?> nullableFallbackFactory) {
+		// 此类为 JDK 动态代理的 InvocationHandler
+		// 设置一些字段
 		this.factory = factory;
 		this.feignClientName = feignClientName;
 		this.target = checkNotNull(target, "target");
@@ -60,6 +62,10 @@ class FeignCircuitBreakerInvocationHandler implements InvocationHandler {
 	public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
 		// early exit if the invoked method is from java.lang.Object
 		// code is the same as ReflectiveFeign.FeignInvocationHandler
+
+		// 1.
+
+		// 处理几个 Object 类的方法.
 		if ("equals".equals(method.getName())) {
 			try {
 				Object otherHandler = args.length > 0 && args[0] != null ? Proxy.getInvocationHandler(args[0]) : null;
@@ -75,6 +81,9 @@ class FeignCircuitBreakerInvocationHandler implements InvocationHandler {
 		else if ("toString".equals(method.getName())) {
 			return toString();
 		}
+		// 调用 factory 得到一个 CircuitBreaker(断路器), 接着调用 asSupplier 执行 method 对应的 methodHandler
+		// 这里使用 CircuitBreaker 执行 fallback 方法(若存在). 之后返回...
+		// 若无 断路器, 显然不会处理 fallback 逻辑... 可见 feign 并无 降级功能
 		String circuitName = this.feignClientName + "_" + method.getName();
 		CircuitBreaker circuitBreaker = this.factory.create(circuitName);
 		Supplier<Object> supplier = asSupplier(method, args);

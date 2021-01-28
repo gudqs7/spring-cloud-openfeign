@@ -61,6 +61,7 @@ public final class FeignCircuitBreaker {
 		}
 
 		public <T> T target(Target<T> target, T fallback) {
+			// 设置 InvocationHandlerFactory 然后调用 build() 得到 Feign 对象, 再调用 newInstance 返回一个实例
 			return build(fallback != null ? new FallbackFactory.Default<T>(fallback) : null).newInstance(target);
 		}
 
@@ -70,10 +71,19 @@ public final class FeignCircuitBreaker {
 
 		@Override
 		public <T> T target(Target<T> target) {
+			// newInstance 方法概述:
+			//    先获取一些信息
+			//    接着遍历接口的每个方法, 为其添加 methodToHandler 中, 顺带处理 java8 接口的 default 方法
+			//    调用 JDK 的 Proxy api, 生产一个代理对象, 其 InvocationHandler 其实就是 FeignCircuitBreakerInvocationHandler
+			//    遍历 DefaultMethodHandler 集合, 将其绑定到 proxy 对象, 处理 default 方法.
+			//
 			return build(null).newInstance(target);
 		}
 
 		public Feign build(final FallbackFactory<?> nullableFallbackFactory) {
+			// 为 断路器设置 InvocationHandlerFactory 属性, 此类的 create 返回一个 FeignCircuitBreakerInvocationHandler
+			//      此处 dispatch 是 method handler map
+			// 然后调用 build() 创建一个 Feign 对象
 			super.invocationHandlerFactory((target, dispatch) -> new FeignCircuitBreakerInvocationHandler(
 					circuitBreakerFactory, feignClientName, target, dispatch, nullableFallbackFactory));
 			return super.build();

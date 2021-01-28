@@ -37,16 +37,24 @@ class FeignCircuitBreakerTargeter implements Targeter {
 		if (!(feign instanceof FeignCircuitBreaker.Builder)) {
 			return feign.target(target);
 		}
+		// 获取 name
 		FeignCircuitBreaker.Builder builder = (FeignCircuitBreaker.Builder) feign;
 		String name = !StringUtils.hasText(factory.getContextId()) ? factory.getName() : factory.getContextId();
+		// 判断两个 fallback
 		Class<?> fallback = factory.getFallback();
 		if (fallback != void.class) {
+			// 处理 fallback 对象然后调用 build() 得到一个 Feign 对象, 再调用 newInstance 返回一个实例
 			return targetWithFallback(name, context, target, builder, fallback);
 		}
 		Class<?> fallbackFactory = factory.getFallbackFactory();
 		if (fallbackFactory != void.class) {
+			// 类似的
+			// 处理 fallbackFactoryClass 对象然后调用 build() 得到一个 Feign 对象, 再调用 newInstance 返回一个实例
 			return targetWithFallbackFactory(name, context, target, builder, fallbackFactory);
 		}
+		// 无 fallback, 还是类似的
+		// 为 builder 设置 断路器和 feignClientName(即serviceId) 属性值
+		// 设置 fallback 对象为空, 然后调用 build() 得到一个 Feign 对象, 再调用 newInstance 返回一个实例
 		return builder(name, builder).target(target);
 	}
 
@@ -54,17 +62,26 @@ class FeignCircuitBreakerTargeter implements Targeter {
 			Target.HardCodedTarget<T> target, FeignCircuitBreaker.Builder builder, Class<?> fallbackFactoryClass) {
 		FallbackFactory<? extends T> fallbackFactory = (FallbackFactory<? extends T>) getFromContext("fallbackFactory",
 				feignClientName, context, fallbackFactoryClass, FallbackFactory.class);
+
+		// 为 builder 设置 断路器和 feignClientName(即serviceId) 属性值
+		// 处理 fallbackFactoryClass 对象然后调用 build() 得到一个 Feign 对象, 再调用 newInstance 返回一个实例
 		return builder(feignClientName, builder).target(target, fallbackFactory);
 	}
 
 	private <T> T targetWithFallback(String feignClientName, FeignContext context, Target.HardCodedTarget<T> target,
 			FeignCircuitBreaker.Builder builder, Class<?> fallback) {
+
+		// 从容器中获取一个 bean 对象, 并确保其为 fallback 类的子类
 		T fallbackInstance = getFromContext("fallback", feignClientName, context, fallback, target.type());
+
+		// 为 builder 设置 断路器和 feignClientName(即serviceId) 属性值
+		// 根据 fallback 设置 InvocationHandlerFactory 然后调用 build() 得到 Feign 对象, 再调用 newInstance 返回一个实例
 		return builder(feignClientName, builder).target(target, fallbackInstance);
 	}
 
 	private <T> T getFromContext(String fallbackMechanism, String feignClientName, FeignContext context,
 			Class<?> beanType, Class<T> targetType) {
+		// 从容器中获取一个 bean 对象, 并确保其为 fallback 类的子类
 		Object fallbackInstance = context.getInstance(feignClientName, beanType);
 		if (fallbackInstance == null) {
 			throw new IllegalStateException(
@@ -81,6 +98,7 @@ class FeignCircuitBreakerTargeter implements Targeter {
 	}
 
 	private FeignCircuitBreaker.Builder builder(String feignClientName, FeignCircuitBreaker.Builder builder) {
+		// 为 builder 设置 断路器和 feignClientName 属性
 		return builder.circuitBreakerFactory(this.circuitBreakerFactory).feignClientName(feignClientName);
 	}
 

@@ -97,11 +97,15 @@ public class FeignClientFactoryBean
 
 	@Override
 	public void afterPropertiesSet() {
+		// bean 初始化校验两个字段不为空.
 		Assert.hasText(contextId, "Context id must be set");
 		Assert.hasText(name, "Name must be set");
 	}
 
 	protected Feign.Builder feign(FeignContext context) {
+		// 从子容器中获取 Feign.Builder 对象, 以及获取 Encoder/Decoder/Contract 对象配置 builder 对象.
+		// 根据容器的的 bean 和 FeignClientProperties 的配置值来配置 builder
+		// 获取 FeignBuilderCustomizer, 遍历执行其 customize() 定制 builder 对象.
 		FeignLoggerFactory loggerFactory = get(context, FeignLoggerFactory.class);
 		Logger logger = loggerFactory.create(type);
 
@@ -114,13 +118,16 @@ public class FeignClientFactoryBean
 				.contract(get(context, Contract.class));
 		// @formatter:on
 
+		// 根据容器的的 bean 和 FeignClientProperties 的配置值来配置 builder
 		configureFeign(context, builder);
+		// 获取 FeignBuilderCustomizer, 遍历执行其 customize() 定制 builder 对象.
 		applyBuildCustomizers(context, builder);
 
 		return builder;
 	}
 
 	private void applyBuildCustomizers(FeignContext context, Feign.Builder builder) {
+		// 获取 FeignBuilderCustomizer, 遍历执行其 customize() 定制 builder 对象.
 		Map<String, FeignBuilderCustomizer> customizerMap = context.getInstances(contextId,
 				FeignBuilderCustomizer.class);
 
@@ -131,13 +138,17 @@ public class FeignClientFactoryBean
 	}
 
 	protected void configureFeign(FeignContext context, Feign.Builder builder) {
+		// 根据容器的的 bean 和 FeignClientProperties 的配置值来配置 builder
 		FeignClientProperties properties = beanFactory != null ? beanFactory.getBean(FeignClientProperties.class)
 				: applicationContext.getBean(FeignClientProperties.class);
 
 		FeignClientConfigurer feignClientConfigurer = getOptional(context, FeignClientConfigurer.class);
 		setInheritParentContext(feignClientConfigurer.inheritParentConfiguration());
 
+		// 从 FeignClientProperties 对象读取 application.yml 的配置, 用这些配置来配置 builder
+		// 根据 context 容器内的 bean 来配置 builder
 		if (properties != null && inheritParentContext) {
+			// 根据 isDefaultToProperties 处理配置的先后性.
 			if (properties.isDefaultToProperties()) {
 				configureUsingConfiguration(context, builder);
 				configureUsingProperties(properties.getConfig().get(properties.getDefaultConfig()), builder);
@@ -155,6 +166,7 @@ public class FeignClientFactoryBean
 	}
 
 	protected void configureUsingConfiguration(FeignContext context, Feign.Builder builder) {
+		// 根据 context 容器内的 bean 来配置 builder
 		Logger.Level level = getInheritedAwareOptional(context, Logger.Level.class);
 		if (level != null) {
 			builder.logLevel(level);
@@ -203,6 +215,7 @@ public class FeignClientFactoryBean
 
 	protected void configureUsingProperties(FeignClientProperties.FeignClientConfiguration config,
 			Feign.Builder builder) {
+		// 根据 config 配置 builder对象
 		if (config == null) {
 			return;
 		}
@@ -306,6 +319,7 @@ public class FeignClientFactoryBean
 	}
 
 	protected <T> T loadBalance(Feign.Builder builder, FeignContext context, HardCodedTarget<T> target) {
+		// 从容器中获取 FeignClient 对象
 		Client client = getOptional(context, Client.class);
 		if (client != null) {
 			builder.client(client);
@@ -328,11 +342,16 @@ public class FeignClientFactoryBean
 	 * information
 	 */
 	<T> T getTarget() {
+		// 先获取 FeignContext 对象. 此对象作用和 LoadBalancerClientFactory 类似, 都是获取对应的 feign 子容器, 然后获取其需要的对象.
 		FeignContext context = beanFactory != null ? beanFactory.getBean(FeignContext.class)
 				: applicationContext.getBean(FeignContext.class);
+		// 获取 feign builder 对象
+		// 从子容器中获取 Feign.Builder 对象并根据子容器, properties 等对其进行大量配置; 获取 FeignBuilderCustomizer, 遍历执行其 customize() 定制 builder 对象.
 		Feign.Builder builder = feign(context);
 
+		// 无 url 则需要调用 LoadBalancer
 		if (!StringUtils.hasText(url)) {
+			// 设置 url
 			if (!name.startsWith("http")) {
 				url = "http://" + name;
 			}
@@ -340,12 +359,15 @@ public class FeignClientFactoryBean
 				url = name;
 			}
 			url += cleanPath();
+			//
 			return (T) loadBalance(builder, context, new HardCodedTarget<>(type, name, url));
 		}
+		// 有 url 则可直接调用 feign 的 target
 		if (StringUtils.hasText(url) && !url.startsWith("http")) {
 			url = "http://" + url;
 		}
 		String url = this.url + cleanPath();
+		// 从容器中获取 FeignClient 的实现类
 		Client client = getOptional(context, Client.class);
 		if (client != null) {
 			if (client instanceof FeignBlockingLoadBalancerClient) {
