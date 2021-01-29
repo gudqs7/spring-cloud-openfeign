@@ -69,6 +69,10 @@ import static feign.form.ContentType.MULTIPART;
 @Configuration(proxyBeanMethods = false)
 public class FeignClientsConfiguration {
 
+	/**
+	 *  这个类会忘 feign 容器注册不少 bean
+	 */
+
 	@Autowired
 	private ObjectFactory<HttpMessageConverters> messageConverters;
 
@@ -186,6 +190,10 @@ public class FeignClientsConfiguration {
 	@Configuration(proxyBeanMethods = false)
 	@Conditional(FeignCircuitBreakerDisabledConditions.class)
 	protected static class DefaultFeignBuilderConfiguration {
+
+		/*
+		    Feign.Builder 在这里注册进去的啊
+		 */
 
 		@Bean
 		@Scope("prototype")
