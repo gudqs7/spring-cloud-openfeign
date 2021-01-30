@@ -118,6 +118,7 @@ public class FeignAutoConfiguration {
 		@ConditionalOnMissingBean
 		@ConditionalOnBean(CircuitBreakerFactory.class)
 		public Targeter circuitBreakerFeignTargeter(CircuitBreakerFactory circuitBreakerFactory) {
+			// 这里注入用户自定义的 CircuitBreakerFactory, 方便用户返回自己的 CircuitBreaker, 重新其 run 方法, 实现自己的逻辑.
 			return new FeignCircuitBreakerTargeter(circuitBreakerFactory);
 		}
 
